@@ -1,180 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mochkil's Snack Attack</title>
-    <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; touch-action: none; }
-        canvas { display: block; background: linear-gradient(#1a2a6c, #b21f1f, #fdbb2d); }
-        #ui { position: absolute; top: 20px; left: 20px; color: #39FF14; font-size: 18px; pointer-events: none; text-shadow: 2px 2px #000; z-index: 10; }
-        #start-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px 40px; font-size: 28px; background: #39FF14; color: #000; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 0 20px #39FF14; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mochkil's Snack Attack | Goal Mode</title>
+<style>
+/* --- BODY + BACKGROUND --- */
+body {
+    margin: 0;
+    padding: 0;
+    background-image: url('mochkils_kitchen.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+}
+
+/* --- OPTIONAL NEON OVERLAY --- */
+#overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.2);
+    z-index: 0.5;
+}
+
+/* --- CANVAS --- */
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* --- UI --- */
+#ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #39FF14;
+    font-size: 18px;
+    pointer-events: none;
+    text-shadow: 2px 2px #000;
+    z-index: 2;
+}
+
+/* --- PROGRESS BAR --- */
+#progress-container {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 20px;
+    background: rgba(57, 255, 20, 0.2);
+    border: 2px solid #39FF14;
+    border-radius: 10px;
+    z-index: 2;
+}
+
+#progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #39FF14, #00FFEF);
+    border-radius: 8px;
+    transition: width 0.1s ease, box-shadow 0.2s ease;
+}
+
+/* --- START BUTTON --- */
+#start-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 25px 40px;
+    font-size: 28px;
+    background: #39FF14;
+    color: #000;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 0 20px #39FF14;
+    z-index: 2;
+}
+</style>
 </head>
 <body>
-    <div id="ui">BASIRAH: <span id="score">0</span> | STARS: <span id="stars"></span></div>
-    <button id="start-btn">START SNACK ATTACK 🥣</button>
-    <canvas id="gameCanvas"></canvas>
+
+<div id="overlay"></div>
+<div id="ui">BASIRAH: <span id="score">0</span> | STARS: <span id="stars"></span></div>
+<div id="progress-container">
+    <div id="progress-bar"></div>
+</div>
+<button id="start-btn">START SNACK ATTACK 🥣</button>
+<canvas id="gameCanvas"></canvas>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const starsEl = document.getElementById('stars');
-    const startBtn = document.getElementById('start-btn');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const starsEl = document.getElementById('stars');
+const startBtn = document.getElementById('start-btn');
+const progressBar = document.getElementById('progress-bar');
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-    // --- ASSETS ---
-    const bgTheme = new Audio('snack_attack_theme.mp3');
-    const straightFireSFX = new Audio('straight_fire.mp3');
-    const beastModeIntro = new Audio('fava.mp3');
-    bgTheme.loop = true;
-    bgTheme.volume = 0.3; // Theme is background layer
+// --- ASSETS ---
+const bgTheme = new Audio('snack_attack_theme.mp3');
+const straightFireSFX = new Audio('straight_fire.mp3');
+const beastModeIntro = new Audio('fava.mp3');
+bgTheme.loop = true;
+bgTheme.volume = 0.3;
 
-    const chefHappy = new Image(); chefHappy.src = 'mochkil_happy.png'; 
-    const chefChaos = new Image(); chefChaos.src = 'mochkil_chaos.png';
-    const azulInsight = new Image(); azulInsight.src = 'azul_insight.png';
+const chefHappy = new Image(); chefHappy.src = 'mochkil_happy.png'; 
+const chefChaos = new Image(); chefChaos.src = 'mochkil_chaos.png';
+const azulInsight = new Image(); azulInsight.src = 'azul_insight.png';
 
-    // --- SETTINGS ---
-    const KITCHEN_FLOOR = canvas.height - 240; // Lifted high to clear iPhone bars
-    let score = 0;
-    let chefX = canvas.width / 2;
-    let beans = [];
-    let hazards = [];
-    let gameActive = false;
-    let sugarCrash = false;
-    let isLevelUp = false;
-    let michelinStars = 0;
-    const milestone = 100;
+// --- SETTINGS ---
+const KITCHEN_FLOOR = canvas.height - 240;
+let score = 0;
+let chefX = canvas.width / 2;
+let beans = [];
+let hazards = [];
+let gameActive = false;
+let sugarCrash = false;
+let isLevelUp = false;
+let michelinStars = 0;
+const milestone = 100;
+const goalScore = 1000; // 🎯 Goal Mode
 
-    // --- CLASSES ---
-    class FavaBean {
-        constructor() {
-            this.x = Math.random() * (canvas.width - 40) + 20;
-            this.y = -30;
-            this.speed = 4 + Math.random() * 3;
-        }
-        update() {
-            this.y += this.speed;
-            // Collision detection at the new lifted height
-            if (this.y > KITCHEN_FLOOR - 60 && this.y < KITCHEN_FLOOR && this.x > chefX - 50 && this.x < chefX + 50) {
-                score += 10;
-                scoreEl.innerText = score;
-                this.y = canvas.height + 100; // Remove
-                if (score % 50 === 0) straightFireSFX.play();
-                checkLevelUp();
-            }
-        }
-        draw() {
-            ctx.fillStyle = "#98FB98";
-            ctx.beginPath();
-            ctx.ellipse(this.x, this.y, 15, 10, 0, 0, Math.PI * 2);
-            ctx.fill();
+// --- CLASSES ---
+class FavaBean {
+    constructor() {
+        this.x = Math.random() * (canvas.width - 40) + 20;
+        this.y = -30;
+        this.speed = 4 + Math.random() * 3;
+    }
+    update() {
+        this.y += this.speed;
+        if (this.y > KITCHEN_FLOOR - 60 && this.y < KITCHEN_FLOOR && this.x > chefX - 50 && this.x < chefX + 50) {
+            score += 10;
+            scoreEl.innerText = score;
+            updateProgressBar();
+            this.y = canvas.height + 100;
+            if (score % 50 === 0) straightFireSFX.play();
+            checkLevelUp();
+            checkWin();
         }
     }
-
-    class SableCookie {
-        constructor() {
-            this.x = Math.random() * (canvas.width - 40) + 20;
-            this.y = -30;
-            this.speed = 7;
-        }
-        update() {
-            this.y += this.speed;
-            if (this.y > KITCHEN_FLOOR - 60 && this.y < KITCHEN_FLOOR && this.x > chefX - 50 && this.x < chefX + 50) {
-                triggerCrash();
-                this.y = canvas.height + 100;
-            }
-        }
-        draw() {
-            ctx.font = "35px Arial";
-            ctx.fillText("🍪", this.x, this.y);
-        }
-    }
-
-    // --- GAME ENGINE ---
-    function triggerCrash() {
-        sugarCrash = true;
-        canvas.style.filter = "blur(8px) hue-rotate(180deg)"; // Losing Basirah
-        setTimeout(() => {
-            sugarCrash = false;
-            canvas.style.filter = "none";
-        }, 3000);
-    }
-
-    function checkLevelUp() {
-        if (score >= (michelinStars + 1) * milestone) {
-            michelinStars++;
-            starsEl.innerText = "⭐".repeat(michelinStars);
-            triggerLevelUpSequence();
-        }
-    }
-
-    function triggerLevelUpSequence() {
-        isLevelUp = true;
-        beastModeIntro.currentTime = 0;
-        beastModeIntro.play(); // Layering the Beast Mode rap over theme
-        setTimeout(() => { isLevelUp = false; }, 3000);
-    }
-
-    function drawKitchen() {
-        // Draw the neon floor line
-        ctx.strokeStyle = "#39FF14";
-        ctx.lineWidth = 4;
+    draw() {
+        ctx.fillStyle = "#98FB98";
         ctx.beginPath();
-        ctx.moveTo(0, KITCHEN_FLOOR);
-        ctx.lineTo(canvas.width, KITCHEN_FLOOR);
-        ctx.stroke();
-        
-        // Floor Glow
-        ctx.fillStyle = "rgba(57, 255, 20, 0.1)";
-        ctx.fillRect(0, KITCHEN_FLOOR, canvas.width, canvas.height - KITCHEN_FLOOR);
+        ctx.ellipse(this.x, this.y, 15, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
     }
+}
 
-    function drawChef() {
-        let currentImg = sugarCrash ? chefChaos : chefHappy;
-        // Draw chef standing ON the neon floor
-        ctx.drawImage(currentImg, chefX - 60, KITCHEN_FLOOR - 110, 120, 120);
-        
-        if (isLevelUp) {
-            ctx.drawImage(azulInsight, canvas.width/2 - 90, 100, 180, 180);
-            ctx.fillStyle = "#fff";
-            ctx.textAlign = "center";
-            ctx.font = "bold 24px 'Courier New'";
-            ctx.fillText("BEAST MODE BESSARA!", canvas.width/2, 320);
+class SableCookie {
+    constructor() {
+        this.x = Math.random() * (canvas.width - 40) + 20;
+        this.y = -30;
+        this.speed = 7;
+    }
+    update() {
+        this.y += this.speed;
+        if (this.y > KITCHEN_FLOOR - 60 && this.y < KITCHEN_FLOOR && this.x > chefX - 50 && this.x < chefX + 50) {
+            triggerCrash();
+            this.y = canvas.height + 100;
         }
     }
-
-    // Input Handling
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        chefX = e.touches[0].clientX;
-    }, { passive: false });
-
-    startBtn.addEventListener('click', () => {
-        gameActive = true;
-        startBtn.style.display = 'none';
-        bgTheme.play();
-        gameLoop();
-    });
-
-    function gameLoop() {
-        if (!gameActive) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        drawKitchen();
-        drawChef();
-
-        if (Math.random() < 0.05) beans.push(new FavaBean());
-        if (Math.random() < 0.01) hazards.push(new SableCookie());
-
-        beans.forEach((b, i) => { b.update(); b.draw(); if(b.y > canvas.height) beans.splice(i,1); });
-        hazards.forEach((h, i) => { h.update(); h.draw(); if(h.y > canvas.height) hazards.splice(i,1); });
-
-        requestAnimationFrame(gameLoop);
+    draw() {
+        ctx.font = "35px Arial";
+        ctx.fillText("🍪", this.x, this.y);
     }
+}
+
+// --- GAME ENGINE ---
+function triggerCrash() {
+    sugarCrash = true;
+    canvas.style.filter = "blur(8px) hue-rotate(180deg)";
+    setTimeout(() => {
+        sugarCrash = false;
+        canvas.style.filter = "none";
+    }, 3000);
+}
+
+function checkLevelUp() {
+    if (score >= (michelinStars + 1) * milestone) {
+        michelinStars++;
+        starsEl.innerText = "⭐".repeat(michelinStars);
+        triggerLevelUpSequence();
+    }
+}
+
+function triggerLevelUpSequence() {
+    isLevelUp = true;
+    beastModeIntro.currentTime = 0;
+    beastModeIntro.play();
+    setTimeout(() => { isLevelUp = false; }, 3000);
+}
+
+function checkWin() {
+    if (score >= goalScore) {
+        gameActive = false;
+        showVictoryVideo();
+    }
+}
+
+function showVictoryVideo() {
+    canvas.style.display = 'none';
+    startBtn.style.display = 'none';
+    const video = document.createElement('video');
+    video.src = 'victory_scene.mp4'; // Replace with your actual video
+    video.autoplay = true;
+    video.controls = true;
+    video.style.position = 'fixed';
+    video.style.top = '0';
+    video.style.left = '0';
+    video.style.width = '100%';
+    video.style.height = '100%';
+    video.style.zIndex = '1000';
+    document.body.appendChild(video);
+
+    video.addEventListener('ended', () => {
+        location.reload();
+    });
+}
+
+// --- PROGRESS BAR ---
+function updateProgressBar() {
+    let percent = Math.min((score / goalScore) * 100, 100);
+    progressBar.style.width = percent + '%';
+
+    // Glow pulse as you get closer to goal
+    let glowIntensity = Math.min(score / goalScore, 1);
+    progressBar.style.boxShadow = `0 0 ${10 + glowIntensity*20}px #39FF14, 0 0 ${10 + glowIntensity*20}px #00FFEF`;
+}
+
+// --- DRAW FUNCTIONS ---
+function drawKitchen() {
+    ctx.strokeStyle = "#39FF14";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, KITCHEN_FLOOR);
+    ctx.lineTo(canvas.width, KITCHEN_FLOOR);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(57, 255, 20, 0.1)";
+    ctx.fillRect(0, KITCHEN_FLOOR, canvas.width, canvas.height - KITCHEN_FLOOR);
+}
+
+function drawChef() {
+    let currentImg = sugarCrash ? chefChaos : chefHappy;
+    ctx.drawImage(currentImg, chefX - 60, KITCHEN_FLOOR - 110, 120, 120);
+
+    if (isLevelUp) {
+        ctx.drawImage(azulInsight, canvas.width/2 - 90, 100, 180, 180);
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.font = "bold 24px 'Courier New'";
+        ctx.fillText("BEAST MODE BESSARA!", canvas.width/2, 320);
+    }
+}
+
+// --- INPUT ---
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    chefX = e.touches[0].clientX;
+}, { passive: false });
+
+startBtn.addEventListener('click', () => {
+    gameActive = true;
+    startBtn.style.display = 'none';
+    bgTheme.play();
+    gameLoop();
+});
+
+// --- GAME LOOP ---
+function gameLoop() {
+    if (!gameActive) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawKitchen();
+    drawChef();
+
+    if (Math.random() < 0.05) beans.push(new FavaBean());
+    if (Math.random() < 0.01) hazards.push(new SableCookie());
+
+    for (let i = beans.length-1; i>=0; i--) {
+        beans[i].update(); 
+        beans[i].draw(); 
+        if(beans[i].y > canvas.height) beans.splice(i,1);
+    }
+    for (let i = hazards.length-1; i>=0; i--) {
+        hazards[i].update(); 
+        hazards[i].draw(); 
+        if(hazards[i].y > canvas.height) hazards.splice(i,1);
+    }
+
+    requestAnimationFrame(gameLoop);
+}
 </script>
 </body>
 </html>
