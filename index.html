@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mochkil's Snack Attack: The Game</title>
+    <title>Mochkil's Snack Attack</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; touch-action: none; }
-        canvas { display: block; background: linear-gradient(#2c3e50, #000); }
-        #ui { position: absolute; top: 10px; left: 10px; color: #39FF14; font-size: 18px; pointer-events: none; text-shadow: 2px 2px #000; }
-        #start-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; font-size: 24px; background: #39FF14; border: none; border-radius: 10px; cursor: pointer; }
+        canvas { display: block; background: linear-gradient(#1a2a6c, #b21f1f, #fdbb2d); }
+        #ui { position: absolute; top: 20px; left: 20px; color: #39FF14; font-size: 18px; pointer-events: none; text-shadow: 2px 2px #000; z-index: 10; }
+        #start-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 25px 40px; font-size: 28px; background: #39FF14; color: #000; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; box-shadow: 0 0 20px #39FF14; }
     </style>
 </head>
 <body>
     <div id="ui">BASIRAH: <span id="score">0</span> | STARS: <span id="stars"></span></div>
-    <button id="start-btn">START SNACK ATTACK</button>
+    <button id="start-btn">START SNACK ATTACK 🥣</button>
     <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -30,13 +31,14 @@
     const straightFireSFX = new Audio('straight_fire.mp3');
     const beastModeIntro = new Audio('fava.mp3');
     bgTheme.loop = true;
-    bgTheme.volume = 0.3;
+    bgTheme.volume = 0.3; // Theme is background layer
 
     const chefHappy = new Image(); chefHappy.src = 'mochkil_happy.png'; 
     const chefChaos = new Image(); chefChaos.src = 'mochkil_chaos.png';
     const azulInsight = new Image(); azulInsight.src = 'azul_insight.png';
 
-    // --- GAME STATE ---
+    // --- SETTINGS ---
+    const KITCHEN_FLOOR = canvas.height - 240; // Lifted high to clear iPhone bars
     let score = 0;
     let chefX = canvas.width / 2;
     let beans = [];
@@ -50,16 +52,17 @@
     // --- CLASSES ---
     class FavaBean {
         constructor() {
-            this.x = Math.random() * (canvas.width - 30);
+            this.x = Math.random() * (canvas.width - 40) + 20;
             this.y = -30;
-            this.speed = 3 + Math.random() * 4;
+            this.speed = 4 + Math.random() * 3;
         }
         update() {
             this.y += this.speed;
-            if (this.y > canvas.height - 130 && this.x > chefX - 40 && this.x < chefX + 40) {
+            // Collision detection at the new lifted height
+            if (this.y > KITCHEN_FLOOR - 60 && this.y < KITCHEN_FLOOR && this.x > chefX - 50 && this.x < chefX + 50) {
                 score += 10;
                 scoreEl.innerText = score;
-                this.y = canvas.height + 100;
+                this.y = canvas.height + 100; // Remove
                 if (score % 50 === 0) straightFireSFX.play();
                 checkLevelUp();
             }
@@ -74,27 +77,27 @@
 
     class SableCookie {
         constructor() {
-            this.x = Math.random() * (canvas.width - 30);
+            this.x = Math.random() * (canvas.width - 40) + 20;
             this.y = -30;
-            this.speed = 6;
+            this.speed = 7;
         }
         update() {
             this.y += this.speed;
-            if (this.y > canvas.height - 130 && this.x > chefX - 40 && this.x < chefX + 40) {
+            if (this.y > KITCHEN_FLOOR - 60 && this.y < KITCHEN_FLOOR && this.x > chefX - 50 && this.x < chefX + 50) {
                 triggerCrash();
                 this.y = canvas.height + 100;
             }
         }
         draw() {
-            ctx.font = "30px Arial";
+            ctx.font = "35px Arial";
             ctx.fillText("🍪", this.x, this.y);
         }
     }
 
-    // --- FUNCTIONS ---
+    // --- GAME ENGINE ---
     function triggerCrash() {
         sugarCrash = true;
-        canvas.style.filter = "blur(5px) hue-rotate(90deg)";
+        canvas.style.filter = "blur(8px) hue-rotate(180deg)"; // Losing Basirah
         setTimeout(() => {
             sugarCrash = false;
             canvas.style.filter = "none";
@@ -111,25 +114,44 @@
 
     function triggerLevelUpSequence() {
         isLevelUp = true;
-        beastModeIntro.play();
-        setTimeout(() => { isLevelUp = false; }, 2000);
+        beastModeIntro.currentTime = 0;
+        beastModeIntro.play(); // Layering the Beast Mode rap over theme
+        setTimeout(() => { isLevelUp = false; }, 3000);
+    }
+
+    function drawKitchen() {
+        // Draw the neon floor line
+        ctx.strokeStyle = "#39FF14";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, KITCHEN_FLOOR);
+        ctx.lineTo(canvas.width, KITCHEN_FLOOR);
+        ctx.stroke();
+        
+        // Floor Glow
+        ctx.fillStyle = "rgba(57, 255, 20, 0.1)";
+        ctx.fillRect(0, KITCHEN_FLOOR, canvas.width, canvas.height - KITCHEN_FLOOR);
     }
 
     function drawChef() {
         let currentImg = sugarCrash ? chefChaos : chefHappy;
-        ctx.drawImage(currentImg, chefX - 50, canvas.height - 150, 100, 100);
+        // Draw chef standing ON the neon floor
+        ctx.drawImage(currentImg, chefX - 60, KITCHEN_FLOOR - 110, 120, 120);
         
         if (isLevelUp) {
-            ctx.drawImage(azulInsight, canvas.width/2 - 75, 100, 150, 150);
+            ctx.drawImage(azulInsight, canvas.width/2 - 90, 100, 180, 180);
             ctx.fillStyle = "#fff";
             ctx.textAlign = "center";
-            ctx.fillText("BEAST MODE: BESSARA!", canvas.width/2, 280);
+            ctx.font = "bold 24px 'Courier New'";
+            ctx.fillText("BEAST MODE BESSARA!", canvas.width/2, 320);
         }
     }
 
+    // Input Handling
     canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
         chefX = e.touches[0].clientX;
-    });
+    }, { passive: false });
 
     startBtn.addEventListener('click', () => {
         gameActive = true;
@@ -142,6 +164,7 @@
         if (!gameActive) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        drawKitchen();
         drawChef();
 
         if (Math.random() < 0.05) beans.push(new FavaBean());
