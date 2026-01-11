@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mochkil's Snack Attack: The Game</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; touch-action: none; }
+        canvas { display: block; background: linear-gradient(#2c3e50, #000); }
+        #ui { position: absolute; top: 10px; left: 10px; color: #39FF14; font-size: 18px; pointer-events: none; text-shadow: 2px 2px #000; }
+        #start-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px; font-size: 24px; background: #39FF14; border: none; border-radius: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="ui">BASIRAH: <span id="score">0</span> | STARS: <span id="stars"></span></div>
+    <button id="start-btn">START SNACK ATTACK</button>
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const starsEl = document.getElementById('stars');
+    const startBtn = document.getElementById('start-btn');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // --- ASSETS ---
+    const bgTheme = new Audio('snack_attack_theme.mp3');
+    const straightFireSFX = new Audio('straight_fire.mp3');
+    const beastModeIntro = new Audio('fava.mp3');
+    bgTheme.loop = true;
+    bgTheme.volume = 0.3;
+
+    const chefHappy = new Image(); chefHappy.src = 'mochkil_happy.png'; 
+    const chefChaos = new Image(); chefChaos.src = 'mochkil_chaos.png';
+    const azulInsight = new Image(); azulInsight.src = 'azul_insight.png';
+
+    // --- GAME STATE ---
+    let score = 0;
+    let chefX = canvas.width / 2;
+    let beans = [];
+    let hazards = [];
+    let gameActive = false;
+    let sugarCrash = false;
+    let isLevelUp = false;
+    let michelinStars = 0;
+    const milestone = 100;
+
+    // --- CLASSES ---
+    class FavaBean {
+        constructor() {
+            this.x = Math.random() * (canvas.width - 30);
+            this.y = -30;
+            this.speed = 3 + Math.random() * 4;
+        }
+        update() {
+            this.y += this.speed;
+            if (this.y > canvas.height - 130 && this.x > chefX - 40 && this.x < chefX + 40) {
+                score += 10;
+                scoreEl.innerText = score;
+                this.y = canvas.height + 100;
+                if (score % 50 === 0) straightFireSFX.play();
+                checkLevelUp();
+            }
+        }
+        draw() {
+            ctx.fillStyle = "#98FB98";
+            ctx.beginPath();
+            ctx.ellipse(this.x, this.y, 15, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    class SableCookie {
+        constructor() {
+            this.x = Math.random() * (canvas.width - 30);
+            this.y = -30;
+            this.speed = 6;
+        }
+        update() {
+            this.y += this.speed;
+            if (this.y > canvas.height - 130 && this.x > chefX - 40 && this.x < chefX + 40) {
+                triggerCrash();
+                this.y = canvas.height + 100;
+            }
+        }
+        draw() {
+            ctx.font = "30px Arial";
+            ctx.fillText("🍪", this.x, this.y);
+        }
+    }
+
+    // --- FUNCTIONS ---
+    function triggerCrash() {
+        sugarCrash = true;
+        canvas.style.filter = "blur(5px) hue-rotate(90deg)";
+        setTimeout(() => {
+            sugarCrash = false;
+            canvas.style.filter = "none";
+        }, 3000);
+    }
+
+    function checkLevelUp() {
+        if (score >= (michelinStars + 1) * milestone) {
+            michelinStars++;
+            starsEl.innerText = "⭐".repeat(michelinStars);
+            triggerLevelUpSequence();
+        }
+    }
+
+    function triggerLevelUpSequence() {
+        isLevelUp = true;
+        beastModeIntro.play();
+        setTimeout(() => { isLevelUp = false; }, 2000);
+    }
+
+    function drawChef() {
+        let currentImg = sugarCrash ? chefChaos : chefHappy;
+        ctx.drawImage(currentImg, chefX - 50, canvas.height - 150, 100, 100);
+        
+        if (isLevelUp) {
+            ctx.drawImage(azulInsight, canvas.width/2 - 75, 100, 150, 150);
+            ctx.fillStyle = "#fff";
+            ctx.textAlign = "center";
+            ctx.fillText("BEAST MODE: BESSARA!", canvas.width/2, 280);
+        }
+    }
+
+    canvas.addEventListener('touchmove', (e) => {
+        chefX = e.touches[0].clientX;
+    });
+
+    startBtn.addEventListener('click', () => {
+        gameActive = true;
+        startBtn.style.display = 'none';
+        bgTheme.play();
+        gameLoop();
+    });
+
+    function gameLoop() {
+        if (!gameActive) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        drawChef();
+
+        if (Math.random() < 0.05) beans.push(new FavaBean());
+        if (Math.random() < 0.01) hazards.push(new SableCookie());
+
+        beans.forEach((b, i) => { b.update(); b.draw(); if(b.y > canvas.height) beans.splice(i,1); });
+        hazards.forEach((h, i) => { h.update(); h.draw(); if(h.y > canvas.height) hazards.splice(i,1); });
+
+        requestAnimationFrame(gameLoop);
+    }
+</script>
+</body>
+</html>
