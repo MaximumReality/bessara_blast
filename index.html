@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <title>Mochkil's Snack Attack | Maximum Reality</title>
 
 <style>
@@ -16,10 +18,8 @@
 
 body {
     margin: 0;
-    padding: 0;
     background: #000 url('mochkils_kitchen.PNG') center/cover fixed;
     height: 100vh;
-    width: 100vw;
     overflow: hidden;
     font-family: 'Courier New', Courier, monospace;
 }
@@ -48,7 +48,7 @@ body {
     font-size: 18px;
     font-weight: bold;
     text-shadow: 2px 2px #000;
-    z-index: 10;
+    z-index: 20;
     pointer-events: none;
 }
 
@@ -62,7 +62,7 @@ body {
     border: 2px solid var(--neon-blue);
     border-radius: 10px;
     background: rgba(0,255,239,0.1);
-    z-index: 10;
+    z-index: 20;
     display: none;
 }
 
@@ -71,7 +71,6 @@ body {
     width: 0%;
     background: linear-gradient(90deg, var(--neon-blue), var(--neon-green));
     border-radius: 8px;
-    transition: width 0.2s;
 }
 
 /* BUTTONS */
@@ -81,8 +80,8 @@ body {
     margin: 10px;
     font-size: 20px;
     font-weight: bold;
-    border: none;
     border-radius: 15px;
+    border: none;
     cursor: pointer;
     box-shadow: 0 0 15px var(--neon-green);
 }
@@ -92,17 +91,25 @@ body {
     box-shadow: 0 0 15px var(--neon-blue);
 }
 
-#home-btn {
+#home-btn, #sound-btn {
     position: absolute;
-    top: 40px;
     right: 20px;
     padding: 10px 15px;
-    background: var(--neon-pink);
     border-radius: 10px;
     font-weight: bold;
     cursor: pointer;
+    z-index: 30;
+}
+
+#home-btn {
+    top: 40px;
+    background: var(--neon-pink);
     display: none;
-    z-index: 20;
+}
+
+#sound-btn {
+    top: 90px;
+    background: var(--neon-blue);
 }
 
 canvas {
@@ -111,11 +118,11 @@ canvas {
     z-index: 5;
 }
 
-#victory-video {
+/* VIDEOS */
+video {
     position: fixed;
     inset: 0;
     object-fit: cover;
-    background: #000;
     display: none;
     z-index: 1000;
 }
@@ -123,7 +130,6 @@ canvas {
 h1 {
     color: var(--neon-pink);
     text-shadow: 3px 3px #000;
-    text-align: center;
 }
 </style>
 </head>
@@ -135,7 +141,7 @@ h1 {
     <h1>MAXIMUM REALITY<br>SNACK ATTACK</h1>
     <button class="menu-btn" onclick="startGame('levels')">GOAL MODE (1000)</button>
     <button class="menu-btn btn-infinite" onclick="startGame('infinite')">INFINITE CHAOS</button>
-    <button class="menu-btn" onclick="window.location.href='https://MaximumReality.xyz'">🏠 MAIN SITE</button>
+    <button class="menu-btn" onclick="location.href='https://MaximumReality.xyz'">🏠 MAIN SITE</button>
 </div>
 
 <!-- GAME -->
@@ -148,19 +154,23 @@ h1 {
 
     <div id="progress-container"><div id="progress-bar"></div></div>
     <button id="home-btn" onclick="goHome()">🏠 HOME</button>
+    <button id="sound-btn">🔊</button>
     <canvas id="gameCanvas"></canvas>
 </div>
 
-<video id="victory-video" playsinline>
+<!-- VIDEOS -->
+<video id="victory-video" playsinline muted preload="auto">
     <source src="victory_scene.MP4" type="video/mp4">
 </video>
 
 <script>
+/* CANVAS */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
+/* UI */
 const scoreEl = document.getElementById('score');
 const starsEl = document.getElementById('stars');
 const bestEl = document.getElementById('best');
@@ -169,15 +179,40 @@ const progressCont = document.getElementById('progress-container');
 const welcome = document.getElementById('welcome-screen');
 const game = document.getElementById('game-screen');
 const homeBtn = document.getElementById('home-btn');
+const soundBtn = document.getElementById('sound-btn');
 const victory = document.getElementById('victory-video');
 
+/* ASSETS */
 const chefHappy = new Image(); chefHappy.src = 'mochkil_happy.png';
 const chefChaos = new Image(); chefChaos.src = 'mochkil_chaos.png';
 const azul = new Image(); azul.src = 'azul_insight.png';
 
+/* AUDIO */
 const music = new Audio('snack_attack_theme.mp3');
 music.loop = true;
+music.volume = 0.4;
 
+const straightFireSFX = new Audio('straight_fire.mp3');
+const beastModeIntro = new Audio('fava.mp3');
+
+/* SOUND TOGGLE */
+let soundOn = localStorage.getItem('soundOn') !== 'false';
+function applySound(){
+    music.muted = !soundOn;
+    straightFireSFX.muted = !soundOn;
+    beastModeIntro.muted = !soundOn;
+    victory.muted = !soundOn;
+    soundBtn.textContent = soundOn ? '🔊' : '🔈';
+}
+applySound();
+
+soundBtn.onclick = () => {
+    soundOn = !soundOn;
+    localStorage.setItem('soundOn', soundOn);
+    applySound();
+};
+
+/* GAME STATE */
 let score = 0;
 let best = localStorage.getItem('mochkil_best') || 0;
 bestEl.textContent = best;
@@ -186,12 +221,16 @@ let chefX = canvas.width / 2;
 let items = [];
 let gameOn = false;
 let mode = 'levels';
-let stars = 0;
+
 let sugar = false;
+let michelinStars = 0;
+let isBeastMode = false;
 
 const goal = 1000;
+const milestone = 100;
 const floorY = canvas.height - 150;
 
+/* ITEMS */
 class Item {
     constructor(type){
         this.type = type;
@@ -200,35 +239,40 @@ class Item {
         this.speed = type === 'bean' ? 5 : 8;
     }
     update(){
-        this.y += this.speed;
+        const boost = isBeastMode ? 1.6 : 1;
+        this.y += this.speed * boost;
+
         if(this.y > floorY - 100 && this.y < floorY &&
            this.x > chefX - 60 && this.x < chefX + 60){
 
             if(this.type === 'bean'){
-                score += 10;
+                score += isBeastMode ? 20 : 10;
                 scoreEl.textContent = score;
+
                 if(score > best){
                     best = score;
                     bestEl.textContent = best;
                     localStorage.setItem('mochkil_best', best);
                 }
+
+                if(score % 50 === 0){
+                    straightFireSFX.currentTime = 0;
+                    straightFireSFX.play();
+                }
+
+                checkBeastMode();
+
                 if(mode === 'levels'){
-                    progressBar.style.width = Math.min(score / goal * 100, 100) + '%';
+                    progressBar.style.width =
+                        Math.min(score / goal * 100, 100) + '%';
                 }
-                if(score % 200 === 0){
-                    stars++;
-                    starsEl.textContent = '⭐'.repeat(stars);
-                }
+
                 if(mode === 'levels' && score >= goal){
                     win();
                 }
+
             } else {
-                sugar = true;
-                canvas.style.filter = 'blur(8px) hue-rotate(180deg)';
-                setTimeout(()=>{
-                    sugar = false;
-                    canvas.style.filter = 'none';
-                }, 2000);
+                triggerCrash();
             }
             this.y = canvas.height + 100;
         }
@@ -246,10 +290,36 @@ class Item {
     }
 }
 
+/* EFFECTS */
+function triggerCrash(){
+    sugar = true;
+    canvas.style.filter = 'blur(8px) hue-rotate(180deg)';
+    setTimeout(()=>{
+        sugar = false;
+        canvas.style.filter = 'none';
+    }, 2500);
+}
+
+function checkBeastMode(){
+    if(score >= (michelinStars + 1) * milestone){
+        michelinStars++;
+        starsEl.textContent = '⭐'.repeat(michelinStars);
+        triggerBeastMode();
+    }
+}
+
+function triggerBeastMode(){
+    isBeastMode = true;
+    beastModeIntro.currentTime = 0;
+    beastModeIntro.play();
+    setTimeout(()=> isBeastMode = false, 3000);
+}
+
+/* GAME CONTROL */
 function startGame(m){
     mode = m;
     score = 0;
-    stars = 0;
+    michelinStars = 0;
     items = [];
     scoreEl.textContent = '0';
     starsEl.textContent = '';
@@ -278,16 +348,19 @@ function win(){
     gameOn = false;
     music.pause();
     victory.style.display = 'block';
+    victory.currentTime = 0;
     victory.play();
     victory.onended = () => location.reload();
 }
 
+/* INPUT */
 canvas.addEventListener('mousemove', e => chefX = e.clientX);
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     chefX = e.touches[0].clientX;
 },{passive:false});
 
+/* LOOP */
 function loop(){
     if(!gameOn) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -300,6 +373,14 @@ function loop(){
     const sprite = sugar ? chefChaos : chefHappy;
     if(sprite.complete){
         ctx.drawImage(sprite, chefX-75, floorY-130, 150,150);
+    }
+
+    if(isBeastMode && azul.complete){
+        ctx.drawImage(azul, canvas.width/2 - 90, 80, 180, 180);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 24px Courier New';
+        ctx.textAlign = 'center';
+        ctx.fillText('BEAST MODE BESSARA!', canvas.width/2, 300);
     }
 
     requestAnimationFrame(loop);
