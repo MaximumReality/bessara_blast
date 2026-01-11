@@ -118,16 +118,26 @@ canvas {
     z-index: 5;
 }
 
-/* VIDEOS */
-video {
+/* VICTORY VIDEO WRAPPER */
+#victory-wrapper {
     position: fixed;
     inset: 0;
-    object-fit: contain;
-    background: #000;
     display: none;
+    justify-content: center;
+    align-items: center;
+    background: #000;
     z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }
 
+#victory-wrapper video {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+}
+
+/* HEADINGS */
 h1 {
     color: var(--neon-pink);
     text-shadow: 3px 3px #000;
@@ -159,19 +169,21 @@ h1 {
     <canvas id="gameCanvas"></canvas>
 </div>
 
-<!-- VIDEOS -->
-<video id="victory-video" playsinline muted preload="auto">
-    <source src="victory_scene.MP4" type="video/mp4">
-</video>
+<!-- VICTORY -->
+<div id="victory-wrapper">
+    <video id="victory-video" playsinline preload="auto">
+        <source src="victory_scene.MP4" type="video/mp4">
+    </video>
+</div>
 
 <script>
-/* CANVAS */
+/* --- CANVAS --- */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = innerWidth;
 canvas.height = innerHeight;
 
-/* UI */
+/* --- UI --- */
 const scoreEl = document.getElementById('score');
 const starsEl = document.getElementById('stars');
 const bestEl = document.getElementById('best');
@@ -181,14 +193,15 @@ const welcome = document.getElementById('welcome-screen');
 const game = document.getElementById('game-screen');
 const homeBtn = document.getElementById('home-btn');
 const soundBtn = document.getElementById('sound-btn');
+const victoryWrapper = document.getElementById('victory-wrapper');
 const victory = document.getElementById('victory-video');
 
-/* ASSETS */
+/* --- ASSETS --- */
 const chefHappy = new Image(); chefHappy.src = 'mochkil_happy.png';
 const chefChaos = new Image(); chefChaos.src = 'mochkil_chaos.png';
 const azul = new Image(); azul.src = 'azul_insight.png';
 
-/* AUDIO */
+/* --- AUDIO --- */
 const music = new Audio('snack_attack_theme.mp3');
 music.loop = true;
 music.volume = 0.4;
@@ -196,7 +209,7 @@ music.volume = 0.4;
 const straightFireSFX = new Audio('straight_fire.mp3');
 const beastModeIntro = new Audio('fava.mp3');
 
-/* SOUND TOGGLE */
+/* --- SOUND TOGGLE --- */
 let soundOn = localStorage.getItem('soundOn') !== 'false';
 function applySound(){
     music.muted = !soundOn;
@@ -213,7 +226,7 @@ soundBtn.onclick = () => {
     applySound();
 };
 
-/* GAME STATE */
+/* --- GAME STATE --- */
 let score = 0;
 let best = localStorage.getItem('mochkil_best') || 0;
 bestEl.textContent = best;
@@ -231,7 +244,7 @@ const goal = 1000;
 const milestone = 100;
 const floorY = canvas.height - 150;
 
-/* ITEMS */
+/* --- ITEMS --- */
 class Item {
     constructor(type){
         this.type = type;
@@ -291,7 +304,7 @@ class Item {
     }
 }
 
-/* EFFECTS */
+/* --- EFFECTS --- */
 function triggerCrash(){
     sugar = true;
     canvas.style.filter = 'blur(8px) hue-rotate(180deg)';
@@ -316,7 +329,7 @@ function triggerBeastMode(){
     setTimeout(()=> isBeastMode = false, 3000);
 }
 
-/* GAME CONTROL */
+/* --- GAME CONTROL --- */
 function startGame(m){
     mode = m;
     score = 0;
@@ -343,25 +356,58 @@ function goHome(){
     game.style.display = 'none';
     welcome.style.display = 'flex';
     homeBtn.style.display = 'none';
+    soundBtn.style.display = 'block';
 }
 
 function win(){
     gameOn = false;
     music.pause();
-    victory.style.display = 'block';
+
+    // Hide all game UI
+    canvas.style.display = 'none';
+    document.getElementById('ui').style.display = 'none';
+    homeBtn.style.display = 'none';
+    progressCont.style.display = 'none';
+    soundBtn.style.display = 'none';
+
+    // Show victory video wrapper
+    victoryWrapper.style.display = 'flex';
+    victoryWrapper.style.opacity = 0;
+
+    // Fade in
+    let fadeIn = 0;
+    const fadeInterval = setInterval(()=>{
+        fadeIn += 0.05;
+        victoryWrapper.style.opacity = Math.min(fadeIn,1);
+        if(fadeIn >= 1) clearInterval(fadeInterval);
+    }, 30);
+
+    // Play video
     victory.currentTime = 0;
     victory.play();
-    victory.onended = () => location.reload();
+
+    victory.onended = ()=>{
+        // Fade out
+        let fadeOut = 1;
+        const fadeOutInterval = setInterval(()=>{
+            fadeOut -= 0.05;
+            victoryWrapper.style.opacity = Math.max(fadeOut,0);
+            if(fadeOut <= 0){
+                clearInterval(fadeOutInterval);
+                location.reload();
+            }
+        },30);
+    };
 }
 
-/* INPUT */
+/* --- INPUT --- */
 canvas.addEventListener('mousemove', e => chefX = e.clientX);
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     chefX = e.touches[0].clientX;
 },{passive:false});
 
-/* LOOP */
+/* --- LOOP --- */
 function loop(){
     if(!gameOn) return;
     ctx.clearRect(0,0,canvas.width,canvas.height);
