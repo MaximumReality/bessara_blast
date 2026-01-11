@@ -259,18 +259,47 @@ function startGame(m){
 function goHome(){ gameOn = false; music.pause(); location.reload(); }
 
 function win(){
-    gameOn = false; music.pause();
-    canvas.style.display = 'none'; document.getElementById('ui').style.display = 'none';
-    homeBtn.style.display = 'none'; progressCont.style.display = 'none';
+    gameOn = false;
+    music.pause();
+
+    // Hide UI
+    canvas.style.display = 'none';
+    document.getElementById('ui').style.display = 'none';
+    homeBtn.style.display = 'none';
+    progressCont.style.display = 'none';
+    soundBtn.style.display = 'none';
+
+    // Prepare Video
     victoryWrapper.style.display = 'flex';
-    let fadeIn = 0;
-    const fadeInterval = setInterval(()=>{
-        fadeIn += 0.05; victoryWrapper.style.opacity = Math.min(fadeIn,1);
-        if(fadeIn >= 1) clearInterval(fadeInterval);
-    }, 30);
-    victory.play();
-    victory.onended = ()=>{ location.reload(); };
+    victory.style.display = 'block';
+    
+    // iPhone Fix: Force a reload and mute briefly to bypass autoplay block
+    victory.load();
+    victory.muted = !soundOn; // Stay muted if sound is off, otherwise trust the toggle
+    
+    let playPromise = victory.play();
+
+    if (playPromise !== undefined) {
+        playPromise.then(_ => {
+            // Video started! Fade in the wrapper
+            let fadeIn = 0;
+            const fadeInterval = setInterval(()=>{
+                fadeIn += 0.05;
+                victoryWrapper.style.opacity = Math.min(fadeIn,1);
+                if(fadeIn >= 1) clearInterval(fadeInterval);
+            }, 30);
+        }).catch(error => {
+            console.log("iPhone blocked autoplay. Adding emergency play button.");
+            // Fallback: If iPhone still blocks it, just reload so the game doesn't hang
+            setTimeout(() => { location.reload(); }, 2000);
+        });
+    }
+
+    victory.onended = ()=>{
+        location.reload();
+    };
 }
+
 
 /* INPUT */
 canvas.addEventListener('mousemove', e => chefX = e.clientX);
